@@ -8,20 +8,19 @@ Requirements:
 * The service should ensure that the sequence number generated is unique across all requests.
 * The service should handle multiple requests concurrently and should be thread-safe.
 
-Additional features:
+## Instructions
 
-* Swagger docs given this is a public API.
-* GRPC option
-* Test coverage - unit and integration
+`go run ./...`
 
-## Considerations
+`go test ./...`
 
-TODO setup with config options for port as per anthgg
-Probably use a cmd/ package
-Write tests
-Determine the max size sequence number we can supprot
-Determine requests per second
-If messages are created at the same time use other distinguishing features
+To make a request hit:
+`http://localhost:8080/sequence`
+
+To mimic client hit:
+`http://localhost:8080/cmd/client`
+
+No API docs as so simple. Would add swagger and/or grpc if this was a real service.
 
 ## Assumptions
 
@@ -52,17 +51,27 @@ Atomic implementation was around 2x faster than mutex implementation.
 
 ### Timestamp based id
 
-Use the timestamp of the request to generate a unique id.
-If two requests come in at the same time, use the IP address to distinguish them.
+The basic idea is to use a timestamp plus some distinguishing feature to generate a sequential unique id.
+This would be unique on a single instance but also could be scaled to multiple instances by using node id or similar.
 
-Depending on the application we could vary this distinguishing feature -  i.e passing an additional sequence number from the client.
+I'm using nanoseconds for the timestamp, which takes 51 bits. This leaves 13 bits for other distinguishing features.
 
 **Guaranteed unique sequential IDs**
 
-Use node id, machine id and a counter along with timestamp. On a single machine this is guaranteed to be unique however we also benefit from being able to scale this service to multiple machines.
+Use node id, machine id and a counter along with timestamp. On a single machine this is guaranteed to be unique however we also benefit from being able to scale this service to multiple machines. In our implementation we are using **server side counter with lock**, however you could also use a client side counter and ip to distinguish requests.
+
+Pros:
+
+* Able to scale to multiple instances
+
+Cons:
+
+* Still using locks, could probably get rid of these with client side counter.
 
 ### Load testing
 
 Done with `ali` for lightweight load testing.
 
 `ali --duration=3s --rate=1000 http://localhost:8080/`
+
+Results can be seen in latencies folder.

@@ -5,54 +5,25 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/h-roth/sequence-service/sequence"
 )
 
-type config struct {
-	port string
-	id   int64
-}
-type configFunc func(*config)
-
-func defaultConfig() *config {
-	return &config{
-		port: "8080",
-		id:   0,
-	}
-}
-
-func withPort(port string) configFunc {
-	return func(c *config) {
-		c.port = port
-	}
-}
-
-// Slice of opt func, allows us to give 1 or many configs options
-// Advantagous as it provides clear defaults but is also easily overridden
-func newServer(opts ...configFunc) *http.Server {
-	c := defaultConfig()
-	for _, opt := range opts {
-		opt(c)
-	}
-
-	log.Printf("Starting server with config: %+v\n", c)
-
-	return &http.Server{
-		Addr:              ":" + c.port,
-		ReadHeaderTimeout: 3 * time.Second,
-	}
-}
+// Could move this within config, think it's fine here for now
+var generator sequence.Sequence
 
 func main() {
 	port := flag.String("port", "8080", "port to listen on")
 	flag.Parse()
 
-	http.HandleFunc("/", handler)
+	// Interesting note:
+	// Originally had this as just "/", this led to browser doing preflight OPTIONS request and accidentally incrementing the sequence
+	http.HandleFunc("/sequence", handler)
 	http.HandleFunc("/cmd/client", func(w http.ResponseWriter, r *http.Request) {
 		request()
 	})
+
+	generator = *sequence.New(&sequence.TimestampGenerator{})
 
 	server := newServer(withPort(*port))
 	err := server.ListenAndServe()
@@ -63,6 +34,13 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	nextID := sequence.PublicGetNextID()
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintf(w, "Only GET requests are supported")
+		return
+	}
+
+	nextID := generator.GetNextID()
+	log.Printf("Next ID: %d", nextID)
 	fmt.Fprintf(w, "%d", nextID)
 }
