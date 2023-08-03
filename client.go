@@ -6,6 +6,9 @@ import (
 	"net/http"
 )
 
+// NOTE: Prefer using a load testing client like `ali` for this.
+// Refer to README.md for more information.
+
 func mockHTTPRequest(num int) string {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:8080/?request=%d", num))
 	if err != nil {
@@ -25,14 +28,13 @@ func request() {
 	numRequests := 10000
 	results := make(chan string)
 
-	// Use goroutine to send multiple time-consuming jobs to the channel.
 	for i := 0; i < numRequests; i++ {
 		go func(num int) {
 			results <- mockHTTPRequest(num)
 		}(i)
 	}
 
-	// Receive results from the channel and use them.
+	// Receive results from the channel and log.
 	for i := 0; i < numRequests; i++ {
 		fmt.Println(<-results)
 	}

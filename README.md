@@ -72,6 +72,6 @@ Cons:
 
 Done with `ali` for lightweight load testing.
 
-`ali --duration=3s --rate=1000 http://localhost:8080/`
+`ali --duration=3s --rate=1000 http://localhost:8080/sequence`
 
 Results can be seen in latencies folder.
